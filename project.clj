@@ -5,8 +5,9 @@
             :url "http://www.linfo.org/bsdlicense.html"}
   :dependencies [[clj-kafka "0.2.8-0.8.1.1"]
                  [clojurewerkz/cassaforte "2.0.0"]
-                 [storm "0.8.1"]
-                 [org.clojure/clojure "1.4.0"]]
+                 [org.clojure/clojure "1.4.0"]
+                 [org.clojure/tools.logging "0.3.1"]
+                 [storm "0.9.0.1"]]
   :aot [fester.TopologySubmitter]
   :profiles {:dev {:dependencies [[storm "0.8.1"]]}}
   :plugins [[lein-ver "1.0.1"]])
