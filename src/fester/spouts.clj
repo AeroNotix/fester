@@ -9,20 +9,25 @@
            [java.nio ByteBuffer]
            [java.io ByteArrayInputStream]))
 
+
+;; TODO: Put into parametrized spouts
 (def topic "uncle_fester")
 (def queue-size 1024)
 
+;; TODO: Put into config files
 (def consumer-config
   {"zookeeper.connect" "localhost:2181"
    "group.id" "clj-kafka.consumer"
    "auto.offset.reset" "smallest"
    "auto.commit.enable" "false"})
 
+;; TODO: Put into config files
 (def producer-config
  {"metadata.broker.list" "localhost:9092"
   "serializer.class" "kafka.serializer.DefaultEncoder"
   "partitioner.class" "kafka.producer.DefaultPartitioner"})
 
+;; TODO: start dynamically
 (def p
   (producer/producer producer-config))
 
