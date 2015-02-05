@@ -45,9 +45,9 @@
                 [stream & _] (get stream-map topic)
                 msg-seq (iterator-seq (.iterator stream))]
             (doseq [msg msg-seq :while @running?]
-              (.put abq (kafka/to-clojure msg)))
-              (.commitOffsets c))
-            (log/info "Consumer for" topic "stopping")
+              (.put abq (kafka/to-clojure msg))
+              (.commitOffsets c)))
+          (log/info "Consumer for" topic "stopping")
           (catch Exception e
             (log/error "Consumer for" topic "encountered" e))
           (finally
@@ -57,10 +57,11 @@
 (defn parse-message {:post [#(= (count %) 3)]}
   [entry]
   (when-let [buf (:value entry)]
-    (let [[key name value] (.split (String. buf) "\\s+")]
-      [key name (Double. value)])))
+    (let [[ts key name value :as all] (.split (String. buf) "\\s+")]
+      (when (= (count all) 4)
+        [(Long. ts) key name (Double. value)]))))
 
-(defspout fester-spout ["key" "name" "value"]
+(defspout fester-spout ["ts" "key" "name" "value"]
   [conf context collector]
   (let [{:keys [queue running?]}
         ;; TODO: use parametrized spouts for topic/queue-size

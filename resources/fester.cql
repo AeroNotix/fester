@@ -3,8 +3,18 @@ WITH replication = {
     'class': 'SimpleStrategy', 'replication_factor': '1'
 };
 
-CREATE TABLE IF NOT EXISTS fester.raw (
-       key  varchar PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS fester.raw(
+       time timestamp,
+       key  varchar,
        name varchar,
-       value double
+       value double,
+       PRIMARY KEY(time, key)
+);
+
+CREATE TABLE IF NOT EXISTS fester.avg_10s (
+       time timestamp,
+       key  varchar,
+       name varchar,
+       value double,
+       PRIMARY KEY(time, key)
 );
