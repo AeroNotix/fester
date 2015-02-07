@@ -70,3 +70,13 @@
       (nextTuple []
         (when-let [entry (parse-message (.poll queue))]
           (emit-spout! collector entry))))))
+
+(defspout fake-data-spout ["ts" "key" "name" "value"]
+  [conf context collector]
+  (let [x (atom 0)]
+    (spout
+      (nextTuple []
+        (let [ct (System/currentTimeMillis)]
+          (send-message topic (.getBytes (str ct " FOO KEY " @x)))
+          (swap! x inc)
+          (Thread/sleep 1000))))))

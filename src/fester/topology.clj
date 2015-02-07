@@ -4,17 +4,20 @@
             [backtype.storm.config :refer :all]
             [fester.bolts :refer [fester-raw-metric-bolt
                                   fester-rollup-metric-bolt]]
-            [fester.spouts :refer [fester-spout]])
+            [fester.spouts :refer [fester-spout fake-data-spout]])
   (:import [backtype.storm LocalCluster LocalDRPC]))
 
 
 (defn storm-topology []
   (topology
     {"fester-spout"
-     (spout-spec fester-spout)}
+     (spout-spec fester-spout)
+     "fake-data"
+     (spout-spec fake-data-spout)}
     {"fester-raw-metric-bolt"
      (bolt-spec
-       {"fester-spout" ["key" "name"]}
+       {"fester-spout" ["key" "name"]
+        "fake-data"    ["key" "name"]}
        fester-raw-metric-bolt)
      "fester-10s-metric-bolt"
      (bolt-spec
