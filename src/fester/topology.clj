@@ -19,8 +19,16 @@
      "fester-10s-metric-bolt"
      (bolt-spec
        {"fester-raw-metric-bolt" ["key" "name"]}
-       (fester-rollup-metric-bolt 10000 "avg_10s"))}))
-3
+       (fester-rollup-metric-bolt 10000))
+     "fester-1m-metric-bolt"
+     (bolt-spec
+       {"fester-10s-metric-bolt" ["key" "name"]}
+       (fester-rollup-metric-bolt 60000))
+     "fester-1hr-metric-bolt"
+     (bolt-spec
+       {"fester-1m-metric-bolt" ["key" "name"]}
+       (fester-rollup-metric-bolt 600000))}))
+
 (defn run! [& {debug "debug" workers "workers" :or {debug "true" workers "2"}}]
   (doto (LocalCluster.)
     (.submitTopology "topology-1"

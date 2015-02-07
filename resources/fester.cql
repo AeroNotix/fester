@@ -11,8 +11,9 @@ CREATE TABLE IF NOT EXISTS fester.raw(
        PRIMARY KEY(time, key)
 );
 
-CREATE TABLE IF NOT EXISTS fester.avg_10s (
+CREATE TABLE IF NOT EXISTS fester.rollups (
        time timestamp,
+       rollup int,
        key  varchar,
        name varchar,
        value double,
