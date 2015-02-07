@@ -41,7 +41,7 @@
           (if (not stored)
             (.put nbhm [key name] [[ts key name value]])
             (let [next (conj stored [ts key name value])]
-              (if (period-lasts? (first next) (last next) 10)
+              (if (period-lasts? (first next) (last (rest next)) period)
                 (do
                   (store-average-in-cass conn table next)
                   (.put nbhm [key name] []))
