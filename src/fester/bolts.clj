@@ -9,11 +9,14 @@
 (defn write-to-cassandra [conn table ts key name value]
   (cql/insert conn table {:time ts :key key :name name :value value}))
 
-(defn store-average-in-cass [conn table values]
+(defn write-rollup-to-cassandra [conn ts rollup key name value]
+  (cql/insert conn "rollups" {:time ts :rollup rollup :key key :name name :value value}))
+
+(defn store-average-in-cass [conn rollup values]
   (let [total (reduce #(+ %1 (%2 3)) 0 values)
         avg   (/ total (float (count values)))
         [ts key name] (first values)]
-    (write-to-cassandra conn table ts key name avg)))
+    (write-rollup-to-cassandra conn ts rollup key name avg)))
 
 (defn period-lasts? [[ts1 & _] [ts2 & _] duration]
   (when (and ts1 ts2)
@@ -28,9 +31,9 @@
         (write-to-cassandra conn "raw" ts key name value)
         (ack! collector tuple)))))
 
-(defbolt fester-rollup-metric-bolt ["ts" "dt" "key" "name" "value"]
+(defbolt fester-rollup-metric-bolt ["ts" "key" "name" "value"]
   {:prepare true
-   :params [period table]}
+   :params [period]}
   [conf _ collector]
   (let [nbhm (NonBlockingHashMap.)
         conn (cc/connect ["127.0.0.1"] {:keyspace "fester"})]
@@ -43,7 +46,8 @@
             (let [next (conj stored [ts key name value])]
               (if (period-lasts? (first next) (last (rest next)) period)
                 (do
-                  (store-average-in-cass conn table next)
+                  (store-average-in-cass conn period next)
                   (.put nbhm [key name] []))
                 (.put nbhm [key name] next))))
-          (emit-bolt! collector [ts period key name value]))))))
+          ;; TODO: This should emit the rolled up values
+          (emit-bolt! collector [ts key name value]))))))
