@@ -1,5 +1,4 @@
 (ns fester.topology
-  "https://github.com/nathanmarz/storm/wiki/Clojure-DSL"
   (:require [backtype.storm.clojure :refer [topology spout-spec bolt-spec]]
             [backtype.storm.config :refer :all]
             [fester.bolts :refer [fester-raw-metric-bolt
