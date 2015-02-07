@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS raw(
        time timestamp,
        key  varchar,
        value double,
-       PRIMARY KEY(time, key)
+       PRIMARY KEY(key, time)
 );
 
 CREATE TABLE IF NOT EXISTS rollups (
@@ -19,5 +19,5 @@ CREATE TABLE IF NOT EXISTS rollups (
        rollup int,
        key  varchar,
        value double,
-       PRIMARY KEY(time, rollup, key)
+       PRIMARY KEY(key, rollup, time)
 );
