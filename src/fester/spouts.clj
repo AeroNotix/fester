@@ -23,9 +23,9 @@
 
 ;; TODO: Put into config files
 (def producer-config
- {"metadata.broker.list" "localhost:9092"
-  "serializer.class" "kafka.serializer.DefaultEncoder"
-  "partitioner.class" "kafka.producer.DefaultPartitioner"})
+  {"metadata.broker.list" "localhost:9092"
+   "serializer.class" "kafka.serializer.DefaultEncoder"
+   "partitioner.class" "kafka.producer.DefaultPartitioner"})
 
 ;; TODO: start dynamically
 (def p
