@@ -76,5 +76,6 @@
     (spout
       (nextTuple []
         (let [ct (System/currentTimeMillis)]
-;          (send-message topic (.getBytes (str ct " KEY.NAME " @x)))
-          (swap! x inc))))))
+          (send-message topic (.getBytes (str ct " KEY.NAME " @x)))
+          (swap! x inc)
+          (Thread/sleep 1000))))))
