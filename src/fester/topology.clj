@@ -16,21 +16,21 @@
      (spout-spec fake-data-spout)}
     {"fester-raw-metric-bolt"
      (bolt-spec
-       {"fester-spout" ["key" "name"]
-        "fake-data"    ["key" "name"]}
+       {"fester-spout" ["key"]
+        "fake-data"    ["key"]}
        fester-raw-metric-bolt)
      "fester-10s-metric-bolt"
      (bolt-spec
-       {"fester-raw-metric-bolt" ["key" "name"]}
        (fester-rollup-metric-bolt 10000))
+       {"fester-raw-metric-bolt" ["key"]}
      "fester-1m-metric-bolt"
      (bolt-spec
-       {"fester-10s-metric-bolt" ["key" "name"]}
        (fester-rollup-metric-bolt 60000))
+       {"fester-10s-metric-bolt" ["key"]}
      "fester-1hr-metric-bolt"
      (bolt-spec
-       {"fester-1m-metric-bolt" ["key" "name"]}
        (fester-rollup-metric-bolt 600000))}))
+       {"fester-1m-metric-bolt" ["key"]}
 
 (defn run! [& {debug "debug" workers "workers" :or {debug "true" workers "2"}}]
   (doto (LocalCluster.)

@@ -2,52 +2,57 @@
   (:require [backtype.storm
              [clojure :refer [emit-bolt! defbolt ack! bolt]]]
             [clojurewerkz.cassaforte.client :as cc]
+            [fester.aggregators :refer [avg]]
             [clojurewerkz.cassaforte.cql :as cql])
   (:import [org.cliffc.high_scale_lib NonBlockingHashMap]))
 
 
-(defn write-to-cassandra [conn table ts key name value]
-  (cql/insert conn table {:time ts :key key :name name :value value}))
+(def aggregator-map
+  {:avg avg})
 
-(defn write-rollup-to-cassandra [conn ts rollup key name value]
-  (cql/insert conn "rollups" {:time ts :rollup rollup :key key :name name :value value}))
+(defn write-to-cassandra [conn table ts key value]
+  (cql/insert conn table {:time ts :key key :value value}))
 
-(defn store-average-in-cass [conn rollup values]
-  (let [total (reduce #(+ %1 (%2 3)) 0 values)
-        avg   (/ total (float (count values)))
-        [ts key name] (first values)]
-    (write-rollup-to-cassandra conn ts rollup key name avg)))
+(defn write-rollup-to-cassandra [conn ts rollup key value]
+  (cql/insert conn "rollups"
+    {:time ts :rollup rollup :key key :value value}))
 
-(defn period-lasts? [[ts1 & _] [ts2 & _] duration]
-  (when (and ts1 ts2)
-    (> (- ts2 ts1) duration)))
+(defn extract-value [[_ _ value]]
+  value)
 
-(defbolt fester-raw-metric-bolt ["ts" "key" "name" "value"] {:prepare true}
+(defn period-lasts? [points duration]
+  (let [ts1 (first (first points))
+        ts2 (first (last (next points)))]
+    (when (and ts1 ts2)
+      (> (- ts2 ts1) duration))))
+
+(defbolt fester-raw-metric-bolt ["ts" "key" "value"] {:prepare true}
   [conf _ collector]
   (let [conn (cc/connect ["127.0.0.1"] {:keyspace "fester"})]
     (bolt
-      (execute [{:strs [ts key name value] :as tuple}]
-        (emit-bolt! collector [ts key name value])
-        (write-to-cassandra conn "raw" ts key name value)
+      (execute [{:strs [ts key value] :as tuple}]
+        (emit-bolt! collector [ts key value])
+        (write-to-cassandra conn "raw" ts key value)
         (ack! collector tuple)))))
 
-(defbolt fester-rollup-metric-bolt ["ts" "key" "name" "value"]
+(defbolt fester-rollup-metric-bolt ["ts" "key" "value"]
   {:prepare true
-   :params [period]}
+   :params [period aggregator-type]}
   [conf _ collector]
   (let [nbhm (NonBlockingHashMap.)
-        conn (cc/connect ["127.0.0.1"] {:keyspace "fester"})]
+        conn (cc/connect ["127.0.0.1"] {:keyspace "fester"})
+        aggregator (aggregator-type aggregator-map)]
     (bolt
-      (execute [{:strs [ts key name value] :as tuple}]
+      (execute [{:strs [ts key value] :as tuple}]
         (ack! collector tuple)
-        (let [stored (.get nbhm [key name])]
+        (let [stored (.get nbhm key)]
           (if (not stored)
-            (.put nbhm [key name] [[ts key name value]])
-            (let [next (conj stored [ts key name value])]
-              (if (period-lasts? (first next) (last (rest next)) period)
-                (do
-                  (store-average-in-cass conn period next)
-                  (.put nbhm [key name] []))
-                (.put nbhm [key name] next))))
-          ;; TODO: This should emit the rolled up values
-          (emit-bolt! collector [ts key name value]))))))
+            (.put nbhm key [[ts key value]])
+            (let [next (conj stored [ts key value])]
+              (if (period-lasts? next period)
+                (let [agg (aggregator (mapv extract-value next))
+                      first-ts (first (first next))]
+                  (write-rollup-to-cassandra conn first-ts period key agg)
+                  (emit-bolt! collector [first-ts key agg])
+                  (.put nbhm key []))
+                (.put nbhm key next)))))))))
