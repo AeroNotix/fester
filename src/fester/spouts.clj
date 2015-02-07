@@ -61,7 +61,6 @@
    :params [topic queue-size]}
   [conf context collector]
   (let [{:keys [queue running?]}
-        ;; TODO: use parametrized spouts for topic/queue-size
         (start-consumer-thread topic queue-size)]
     (spout
       (nextTuple []
