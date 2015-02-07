@@ -6,6 +6,9 @@ Copyright © 2015 Aaron France
 
 BSD License
 
+What it is
+==========
+
 Fester is a metrics aggregator consisting of a Storm service which
 reads from a Kafka queue and emits events through a topology which
 looks like the below:
