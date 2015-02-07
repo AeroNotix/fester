@@ -44,5 +44,5 @@
                 (do
                   (store-average-in-cass conn table next)
                   (.put nbhm [key name] []))
-                (.put nbhm [key name] (conj stored [ts key name value])))))
+                (.put nbhm [key name] next))))
           (emit-bolt! collector [ts period key name value]))))))
