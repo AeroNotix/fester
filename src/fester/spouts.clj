@@ -4,11 +4,16 @@
             [clj-kafka.core :as kafka]
             [clj-kafka.producer :as producer]
             [clj-kafka.zk :as zk]
-            [clojure.tools.logging :as log])
-  (:import [java.util.concurrent ArrayBlockingQueue]
+            [clojure.tools.logging :as log]
+            [flatland.protobuf.core :refer [protodef protobuf protobuf-load protobuf-dump]])
+  (:import [com.google.protobuf InvalidProtocolBufferException]
+           [fester protobuf$Metric]
+           [java.io ByteArrayInputStream]
            [java.nio ByteBuffer]
-           [java.io ByteArrayInputStream]))
+           [java.util.concurrent ArrayBlockingQueue]))
 
+
+(def Metric (protodef fester.protobuf$Metric))
 
 ;; TODO: Put into config files
 (def consumer-config
@@ -52,9 +57,11 @@
 
 (defn parse-message [entry]
   (when-let [buf (:value entry)]
-    (let [[ts key value :as all] (.split (String. buf) "\\s+")]
-      (when (= (count all) 3)
-        [(Long. ts) key (Double. value)]))))
+    (try
+      (protobuf-load Metric buf)
+      (catch InvalidProtocolBufferException e
+        (println e)
+        (log/error "Invalid protocol buffer message:" (str e) (String. buf))))))
 
 (defspout fester-spout ["ts" "key" "value"]
   {:prepare true
@@ -65,7 +72,9 @@
     (spout
       (nextTuple []
         (when-let [entry (parse-message (.poll queue))]
-          (emit-spout! collector entry))))))
+          (let [{:keys [time key value]} entry]
+            (when (and time key value)
+              (emit-spout! collector [time key value]))))))))
 
 (defspout fake-data-spout ["ts" "key" "value"]
   {:prepare true
@@ -75,6 +84,7 @@
     (spout
       (nextTuple []
         (let [ct (System/currentTimeMillis)]
-          (send-message topic (.getBytes (str ct " KEY.NAME " @x)))
+          (send-message topic
+            (protobuf-dump (protobuf Metric :time ct :key "foo" :value @x)))
           (swap! x inc)
           (Thread/sleep 1000))))))
