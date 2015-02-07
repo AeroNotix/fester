@@ -10,10 +10,6 @@
            [java.io ByteArrayInputStream]))
 
 
-;; TODO: Put into parametrized spouts
-(def topic "uncle_fester")
-(def queue-size 1024)
-
 ;; TODO: Put into config files
 (def consumer-config
   {"zookeeper.connect" "localhost:2181"
@@ -54,14 +50,15 @@
             (.shutdown c)))))
     {:queue abq :running? running?}))
 
-(defn parse-message {:post [#(= (count %) 3)]}
-  [entry]
+(defn parse-message [entry]
   (when-let [buf (:value entry)]
-    (let [[ts key name value :as all] (.split (String. buf) "\\s+")]
-      (when (= (count all) 4)
-        [(Long. ts) key name (Double. value)]))))
+    (let [[ts key value :as all] (.split (String. buf) "\\s+")]
+      (when (= (count all) 3)
+        [(Long. ts) key (Double. value)]))))
 
-(defspout fester-spout ["ts" "key" "name" "value"]
+(defspout fester-spout ["ts" "key" "value"]
+  {:prepare true
+   :params [topic queue-size]}
   [conf context collector]
   (let [{:keys [queue running?]}
         ;; TODO: use parametrized spouts for topic/queue-size
@@ -71,12 +68,13 @@
         (when-let [entry (parse-message (.poll queue))]
           (emit-spout! collector entry))))))
 
-(defspout fake-data-spout ["ts" "key" "name" "value"]
+(defspout fake-data-spout ["ts" "key" "value"]
+  {:prepare true
+   :params [topic]}
   [conf context collector]
   (let [x (atom 0)]
     (spout
       (nextTuple []
         (let [ct (System/currentTimeMillis)]
-          (send-message topic (.getBytes (str ct " FOO KEY " @x)))
-          (swap! x inc)
-          (Thread/sleep 1000))))))
+;          (send-message topic (.getBytes (str ct " KEY.NAME " @x)))
+          (swap! x inc))))))

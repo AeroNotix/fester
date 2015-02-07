@@ -8,12 +8,15 @@
   (:import [backtype.storm LocalCluster LocalDRPC]))
 
 
+(def topic "uncle_fester")
+(def queue-size 1024)
+
 (defn storm-topology []
   (topology
     {"fester-spout"
-     (spout-spec fester-spout)
+     (spout-spec (fester-spout topic queue-size))
      "fake-data"
-     (spout-spec fake-data-spout)}
+     (spout-spec (fake-data-spout topic))}
     {"fester-raw-metric-bolt"
      (bolt-spec
        {"fester-spout" ["key"]
