@@ -5,3 +5,5 @@
 Copyright © 2015 Aaron France
 
 BSD License
+
+![dataflow](/resources/dataflow.png)
