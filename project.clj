@@ -13,8 +13,10 @@
                                               javax.jms/jms
                                               com.sun.jdmk/jmxtools
                                               com.sun.jmx/jmxri]]
+                 [cc.qbits/nippy-lz4 "0.1.0"]
+                 [org.flatland/protobuf "0.8.1"]
                  [org.slf4j/slf4j-log4j12 "1.6.6"]]
   :aot [fester.TopologySubmitter]
   :profiles {:dev {:dependencies [[storm "0.8.1"]]}}
   :plugins [[lein-ver "1.0.1"]
-            [lein-protobuf "0.1.1"]])
+            [lein-protobuf "0.4.1"]])
