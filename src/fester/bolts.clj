@@ -24,7 +24,7 @@
   (let [ts1 (first (first points))
         ts2 (first (last (next points)))]
     (when (and ts1 ts2)
-      (> (- ts2 ts1) duration))))
+      (>= (- ts2 ts1) duration))))
 
 (defbolt fester-raw-metric-bolt ["ts" "key" "value"] {:prepare true}
   [conf _ collector]
