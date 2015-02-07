@@ -16,7 +16,8 @@
     (write-to-cassandra conn table ts key name avg)))
 
 (defn period-lasts? [[ts1 & _] [ts2 & _] duration]
-  (> (- ts2 ts1) duration))
+  (when (and ts1 ts2)
+    (> (- ts2 ts1) duration)))
 
 (defbolt fester-raw-metric-bolt ["ts" "key" "name" "value"] {:prepare true}
   [conf _ collector]
