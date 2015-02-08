@@ -29,8 +29,8 @@
   (let [conn (cc/connect ["127.0.0.1"] {:keyspace "fester"})]
     (bolt
       (execute [{:strs [ts key value] :as tuple}]
-        (emit-bolt! collector [ts key value])
         (write-to-cassandra conn "raw" ts key value)
+        (emit-bolt! collector [ts key value] :anchor tuple)
         (ack! collector tuple)))))
 
 (defn store-initial [hm [ts key value] & {:keys [max-written] :or
