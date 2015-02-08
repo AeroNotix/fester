@@ -33,8 +33,9 @@
         (write-to-cassandra conn "raw" ts key value)
         (ack! collector tuple)))))
 
-(defn store-initial [hm [ts key value]]
-  (.put hm key {:min-ts ts :max-ts ts
+(defn store-initial [hm [ts key value] & {:keys [max-written] :or
+                                          {max-written 0}}]
+  (.put hm key {:min-ts ts :max-ts ts :max-written max-written
                 :stored [[ts key value]]}))
 
 (defn update-bounds [{:keys [min-ts max-ts] :as last} next-ts]
@@ -52,17 +53,18 @@
         aggregator (aggregator-type aggregator-map)]
     (bolt
       (execute [{:strs [ts key value] :as tuple}]
-        (ack! collector tuple)
-        (let [{:keys [stored] :as last} (.get nbhm key)]
+        (ack! collector tuple) ;; TODO: This should go last
+        (let [{:keys [max-written stored] :as last} (.get nbhm key)]
           (if (not stored)
             (store-initial nbhm [ts key value])
-            (let [next (-> last
-                         (update-in [:stored] conj [ts key value])
-                         (update-bounds ts))]
-              (if (period-lasts? next period)
-                (let [agg (aggregator (mapv extract-value (:stored next)))
-                      first-ts (:min-ts next)]
-                  (write-rollup-to-cassandra conn first-ts period key agg)
-                  (emit-bolt! collector [first-ts key agg])
-                  (store-initial nbhm [ts key value]))
-                (.put nbhm key next)))))))))
+            (when (> ts max-written)
+              (let [next (-> last
+                           (update-in [:stored] conj [ts key value])
+                           (update-bounds ts))]
+                (if (period-lasts? next period)
+                  (let [agg (aggregator (mapv extract-value (:stored next)))
+                        first-ts (:min-ts next)]
+                    (write-rollup-to-cassandra conn first-ts period key agg)
+                    (emit-bolt! collector [first-ts key agg])
+                    (store-initial nbhm [ts key value]) :max-written first-ts)
+                  (.put nbhm key next))))))))))
