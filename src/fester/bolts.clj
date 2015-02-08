@@ -53,7 +53,6 @@
         aggregator (aggregator-type aggregator-map)]
     (bolt
       (execute [{:strs [ts key value] :as tuple}]
-        (ack! collector tuple) ;; TODO: This should go last
         (let [{:keys [max-written stored] :as last} (.get nbhm key)]
           (if (not stored)
             (store-initial nbhm [ts key value])
@@ -65,6 +64,7 @@
                   (let [agg (aggregator (mapv extract-value (:stored next)))
                         first-ts (:min-ts next)]
                     (write-rollup-to-cassandra conn first-ts period key agg)
-                    (emit-bolt! collector [first-ts key agg])
+                    (emit-bolt! collector [first-ts key agg] :anchor tuple)
                     (store-initial nbhm [ts key value]) :max-written first-ts)
-                  (.put nbhm key next))))))))))
+                  (.put nbhm key next))))))
+        (ack! collector tuple)))))
