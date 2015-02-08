@@ -80,11 +80,12 @@
   {:prepare true
    :params [topic]}
   [conf context collector]
-  (let [x (atom 0)]
+  (let [x (atom 0)
+        key (str "key-" (rand))]
     (spout
       (nextTuple []
         (let [ct (System/currentTimeMillis)]
           (send-message topic
-            (protobuf-dump (protobuf Metric :time ct :key "foo" :value @x)))
+            (protobuf-dump (protobuf Metric :time ct :key key :value @x)))
           (swap! x inc)
-          (Thread/sleep 1000))))))
+          (Thread/sleep 100))))))
