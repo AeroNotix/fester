@@ -20,11 +20,9 @@
 (defn extract-value [[_ _ value]]
   value)
 
-(defn period-lasts? [points duration]
-  (let [ts1 (first (first points))
-        ts2 (first (last (next points)))]
-    (when (and ts1 ts2)
-      (>= (- ts2 ts1) duration))))
+(defn period-lasts? [{:keys [min-ts max-ts] :as last} duration]
+  (when (and min-ts max-ts)
+    (>= (- max-ts min-ts) duration)))
 
 (defbolt fester-raw-metric-bolt ["ts" "key" "value"] {:prepare true}
   [conf _ collector]
@@ -34,6 +32,16 @@
         (emit-bolt! collector [ts key value])
         (write-to-cassandra conn "raw" ts key value)
         (ack! collector tuple)))))
+
+(defn store-initial [hm [ts key value]]
+  (.put hm key {:min-ts ts :max-ts ts
+                :stored [[ts key value]]}))
+
+(defn update-bounds [{:keys [min-ts max-ts] :as last} next-ts]
+  (cond
+    (< next-ts min-ts) (assoc last :min-ts next-ts)
+    (> next-ts max-ts) (assoc last :max-ts next-ts)
+    :else last))
 
 (defbolt fester-rollup-metric-bolt ["ts" "key" "value"]
   {:prepare true
@@ -45,14 +53,16 @@
     (bolt
       (execute [{:strs [ts key value] :as tuple}]
         (ack! collector tuple)
-        (let [stored (.get nbhm key)]
+        (let [{:keys [stored] :as last} (.get nbhm key)]
           (if (not stored)
-            (.put nbhm key [[ts key value]])
-            (let [next (conj stored [ts key value])]
+            (store-initial nbhm [ts key value])
+            (let [next (-> last
+                         (update-in [:stored] conj [ts key value])
+                         (update-bounds ts))]
               (if (period-lasts? next period)
-                (let [agg (aggregator (mapv extract-value next))
-                      first-ts (first (first next))]
+                (let [agg (aggregator (mapv extract-value (:stored next)))
+                      first-ts (:min-ts next)]
                   (write-rollup-to-cassandra conn first-ts period key agg)
                   (emit-bolt! collector [first-ts key agg])
-                  (.put nbhm key []))
+                  (store-initial nbhm [ts key value]))
                 (.put nbhm key next)))))))))
