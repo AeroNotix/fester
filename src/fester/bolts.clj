@@ -2,9 +2,9 @@
   (:require [backtype.storm
              [clojure :refer [emit-bolt! defbolt ack! bolt]]]
             [clojurewerkz.cassaforte.client :as cc]
-            [fester.aggregators :refer [avg]]
             [clojurewerkz.cassaforte.cql :as cql]
             [clojurewerkz.cassaforte.query :refer [values queries]]
+            [fester.aggregators :refer [avg]]
             [qbits.hayt.dsl.statement :as hs])
   (:import [org.cliffc.high_scale_lib NonBlockingHashMap]))
 
