@@ -89,5 +89,4 @@
         (let [ct (System/currentTimeMillis)]
           (send-message topic
             (protobuf-dump (protobuf Metric :time ct :key key :value @x)))
-          (swap! x inc)
-          (Thread/sleep 100))))))
+          (swap! x inc))))))
