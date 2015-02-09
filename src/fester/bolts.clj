@@ -9,8 +9,7 @@
   (:import [org.cliffc.high_scale_lib NonBlockingHashMap]))
 
 
-(def aggregator-map
-  {:avg avg})
+(def aggregator-map {:avg avg})
 
 (defn write-to-cassandra [conn table ts key value]
   (cql/insert conn table {:time ts :key key :value value}))
