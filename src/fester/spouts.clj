@@ -40,14 +40,16 @@
   (let [running? (atom true)
         abq      (ArrayBlockingQueue. queue-size)]
     (future
-      (let [c (zfkc/consumer consumer-config)]
+      (let [c (zfkc/consumer consumer-config)
+            count (atom 0)]
         (try
           (let [stream-map (.createMessageStreams c {topic (int 1)})
                 [stream & _] (get stream-map topic)
                 msg-seq (iterator-seq (.iterator stream))]
             (doseq [msg msg-seq :while @running?]
               (.put abq (kafka/to-clojure msg))
-              (.commitOffsets c)))
+              (when (mod (swap! count inc) 1024)
+                (.commitOffsets c))))
           (log/info "Consumer for" topic "stopping")
           (catch Exception e
             (log/error "Consumer for" topic "encountered" e))
