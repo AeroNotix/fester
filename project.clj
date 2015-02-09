@@ -12,6 +12,7 @@
                                               javax.jms/jms
                                               com.sun.jdmk/jmxtools
                                               com.sun.jmx/jmxri]]
+                 [cc.qbits/hayt "2.0.0"]
                  [cc.qbits/nippy-lz4 "0.1.0"]
                  [org.flatland/protobuf "0.8.1"]]
   :aot :all

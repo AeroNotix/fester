@@ -3,7 +3,9 @@
              [clojure :refer [emit-bolt! defbolt ack! bolt]]]
             [clojurewerkz.cassaforte.client :as cc]
             [fester.aggregators :refer [avg]]
-            [clojurewerkz.cassaforte.cql :as cql])
+            [clojurewerkz.cassaforte.cql :as cql]
+            [clojurewerkz.cassaforte.query :refer [values queries]]
+            [qbits.hayt.dsl.statement :as hs])
   (:import [org.cliffc.high_scale_lib NonBlockingHashMap]))
 
 
@@ -17,21 +19,20 @@
   (cql/insert conn "rollups"
     {:time ts :rollup rollup :key key :value value}))
 
-(defn extract-value [[_ _ value]]
-  value)
+(defn create-insert-statement [table [ts key value]]
+  (hs/insert table (values {:time ts :key key :value value})))
+
+(defn write-batches-to-cassandra [conn table batches]
+  (cql/atomic-batch conn
+    (apply
+      queries
+      (mapv (partial create-insert-statement table) batches))))
+
+(defn extract-value [[_ _ value]] value)
 
 (defn period-lasts? [{:keys [min-ts max-ts] :as last} duration]
   (when (and min-ts max-ts)
     (>= (- max-ts min-ts) duration)))
-
-(defbolt fester-raw-metric-bolt ["ts" "key" "value"] {:prepare true}
-  [conf _ collector]
-  (let [conn (cc/connect ["127.0.0.1"] {:keyspace "fester"})]
-    (bolt
-      (execute [{:strs [ts key value] :as tuple}]
-        (write-to-cassandra conn "raw" ts key value)
-        (emit-bolt! collector [ts key value] :anchor tuple)
-        (ack! collector tuple)))))
 
 (defn store-initial [hm [ts key value] & {:keys [max-written] :or
                                           {max-written 0}}]
@@ -43,6 +44,27 @@
     (< next-ts min-ts) (assoc last :min-ts next-ts)
     (> next-ts max-ts) (assoc last :max-ts next-ts)
     :else last))
+
+(defbolt fester-raw-metric-bolt ["ts" "key" "value"]
+  {:prepare true
+   :params [batch-size]}
+  [conf _ collector]
+  (let [conn (cc/connect ["127.0.0.1"] {:keyspace "fester"})
+        batches (atom [])
+        writer (if (number? batch-size)
+                 (fn [row]
+                   (swap! batches conj row)
+                   (when (zero? (mod (count @batches) batch-size))
+                     (write-batches-to-cassandra conn "raw" @batches)
+                     ;; TODO ACK all in here.
+                     (reset! batches [])))
+                 (fn [{:strs [ts key value] :as tuple}]
+                   (write-to-cassandra conn "raw" ts key value)
+                   (ack! collector tuple)))]
+    (bolt
+      (execute [{:strs [ts key value] :as tuple}]
+        (writer [ts key value])
+        (emit-bolt! collector [ts key value] :anchor tuple)))))
 
 (defbolt fester-rollup-metric-bolt ["ts" "key" "value"]
   {:prepare true
