@@ -50,19 +50,22 @@
   [conf _ collector]
   (let [conn (cc/connect ["127.0.0.1"] {:keyspace "fester"})
         batches (atom [])
+        tuples (atom [])
         writer (if (number? batch-size)
-                 (fn [row]
-                   (swap! batches conj row)
+                 (fn [{:strs [ts key value] :as tuple}]
+                   (swap! batches conj [ts key value])
+                   (swap! tuple conj tuple)
                    (when (zero? (mod (count @batches) batch-size))
                      (write-batches-to-cassandra conn "raw" @batches)
-                     ;; TODO ACK all in here.
-                     (reset! batches [])))
+                     (mapv #(ack! collector %) @tuples)
+                     (reset! batches [])
+                     (reset! tuples [])))
                  (fn [{:strs [ts key value] :as tuple}]
                    (write-to-cassandra conn "raw" ts key value)
                    (ack! collector tuple)))]
     (bolt
       (execute [{:strs [ts key value] :as tuple}]
-        (writer [ts key value])
+        (writer tuple)
         (emit-bolt! collector [ts key value] :anchor tuple)))))
 
 (defbolt fester-rollup-metric-bolt ["ts" "key" "value"]
