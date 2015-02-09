@@ -19,4 +19,4 @@
   :profiles {:dev {:dependencies [[org.apache.storm/storm-core "0.9.3"]]}
              :provided {:dependencies [[org.apache.storm/storm-core "0.9.3"]]}}
   :plugins [[lein-ver "1.0.1"]
-            [lein-protobuf "0.4.1"]])
+            [lein-protobuf "0.1.1"]])
